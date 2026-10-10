@@ -1,0 +1,6 @@
+{
+  "name": "SIM-SANITASI CK (Sistem Informasi Sanitasi Cipta Karya)",
+  "description": "Sistem Informasi Manajemen Data Sanitasi, Penerima Bantuan, dan Kondisi Sarana Sanitasi Bidang Cipta Karya dengan integrasi Google Sheets.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
