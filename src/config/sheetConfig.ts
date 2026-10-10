@@ -15,13 +15,13 @@
  * 4. Salin link tersebut dan tempelkan pada TARGET_GOOGLE_SHEET_URL di bawah ini.
  */
 
-export const TARGET_GOOGLE_SHEET_URL = '';
+export const TARGET_GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1dBFPAGlTF0wG1hi9cbLcS1nQO4bC5FJjYwkTBQEn7-Q/edit?usp=sharing';
 
 /**
  * (Opsional) URL Web App Google Apps Script jika Anda ingin fitur simpan 2-arah otomatis:
  * Contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
  */
-export const TARGET_APPS_SCRIPT_URL = '';
+export const TARGET_APPS_SCRIPT_URL = 'https://docs.google.com/spreadsheets/d/1dBFPAGlTF0wG1hi9cbLcS1nQO4bC5FJjYwkTBQEn7-Q/edit?usp=sharing';
 
 /**
  * Opsi otomatis menarik data saat aplikasi pertama kali dibuka (true / false)
