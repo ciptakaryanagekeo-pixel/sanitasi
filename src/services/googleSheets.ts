@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import { IdentitasWilayah, SaranaSanitasi, GoogleSheetConfig, DashboardStats, JenisSarana, KondisiSarana, StatusKeberfungsian } from '../types/sanitasi';
 import { INITIAL_WILAYAH, INITIAL_SARANA } from '../data/initialData';
+import { TARGET_GOOGLE_SHEET_URL, TARGET_APPS_SCRIPT_URL, AUTO_SYNC_ON_STARTUP } from '../config/sheetConfig';
 
 const STORAGE_KEYS = {
   WILAYAH: 'sim_sanitasi_wilayah_clean_v2',
@@ -9,12 +10,12 @@ const STORAGE_KEYS = {
   AUTH: 'sim_sanitasi_auth_session_v2',
 };
 
-// Default Google Sheet Config
+// Default Google Sheet Config from sheetConfig.ts
 export const DEFAULT_CONFIG: GoogleSheetConfig = {
-  sheetUrl: '',
-  appsScriptUrl: '',
-  autoSync: false,
-  status: 'disconnected',
+  sheetUrl: TARGET_GOOGLE_SHEET_URL || '',
+  appsScriptUrl: TARGET_APPS_SCRIPT_URL || '',
+  autoSync: AUTO_SYNC_ON_STARTUP,
+  status: TARGET_GOOGLE_SHEET_URL ? 'connected' : 'disconnected',
 };
 
 // Check Auth Session
@@ -99,7 +100,14 @@ export function getSavedConfig(): GoogleSheetConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CONFIG);
     if (raw) {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        sheetUrl: TARGET_GOOGLE_SHEET_URL || parsed.sheetUrl || '',
+        appsScriptUrl: TARGET_APPS_SCRIPT_URL || parsed.appsScriptUrl || '',
+        status: (TARGET_GOOGLE_SHEET_URL || parsed.sheetUrl) ? 'connected' : 'disconnected',
+      };
     }
   } catch (e) {
     console.error('Failed to load config from localStorage', e);

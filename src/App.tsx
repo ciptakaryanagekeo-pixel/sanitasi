@@ -22,6 +22,7 @@ import {
   calculateStats,
   getSavedAuth,
   saveAuth,
+  fetchFromGoogleSheet,
 } from './services/googleSheets';
 import { CheckCircle2 } from 'lucide-react';
 
@@ -67,6 +68,18 @@ export default function App() {
   useEffect(() => {
     saveConfig(sheetConfig);
   }, [sheetConfig]);
+
+  // Auto-sync from embedded Google Sheet URL on startup if configured
+  useEffect(() => {
+    if (isAuthenticated && sheetConfig.sheetUrl && sheetConfig.autoSync && saranaList.length === 0) {
+      fetchFromGoogleSheet(sheetConfig.sheetUrl).then((res) => {
+        if (res.sarana && res.sarana.length > 0) {
+          setSaranaList(res.sarana);
+          showToast(`Otomatis memuat ${res.sarana.length} data dari Google Spreadsheet!`);
+        }
+      });
+    }
+  }, [isAuthenticated, sheetConfig.sheetUrl, sheetConfig.autoSync]);
 
   // Derived Dashboard Stats
   const stats = useMemo(() => {

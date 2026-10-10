@@ -253,6 +253,24 @@ export default function GoogleSheetModal({
               )}
             </div>
 
+            {/* Embedded Code Location Box */}
+            <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-blue-900 text-xs">
+                <Code2 className="w-4 h-4 text-blue-700" />
+                Lokasi Tanam URL Langsung di Kodingan:
+              </div>
+              <p className="text-[11px] text-blue-800 leading-relaxed">
+                Anda dapat menanamkan link Google Spreadsheet secara permanen di file kodingan:
+                <br />
+                <code className="bg-white px-2 py-0.5 rounded border border-blue-300 text-blue-950 font-mono text-[11px] font-bold block mt-1">
+                  /src/config/sheetConfig.ts
+                </code>
+              </p>
+              <p className="text-[10px] text-blue-700">
+                Ubah variabel: <code className="font-bold">export const TARGET_GOOGLE_SHEET_URL = 'LINK_ANDA_DISINI';</code>
+              </p>
+            </div>
+
             {/* Input Google Sheet Link */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">
