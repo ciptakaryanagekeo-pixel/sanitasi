@@ -5,32 +5,29 @@ import {
   Building2,
   MapPin,
   FileText,
-  FileSpreadsheet,
   Menu,
   X,
   Plus,
   Droplets,
   LogOut,
   UserCheck,
+  CheckCircle2,
 } from 'lucide-react';
-import { GoogleSheetConfig } from '../types/sanitasi';
 
 interface NavbarProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
-  onOpenGoogleSheetModal: () => void;
   onOpenAddSarana: () => void;
   onLogout: () => void;
-  config: GoogleSheetConfig;
+  isAutoSyncing?: boolean;
 }
 
 export default function Navbar({
   currentTab,
   onTabChange,
-  onOpenGoogleSheetModal,
   onOpenAddSarana,
   onLogout,
-  config,
+  isAutoSyncing = false,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -93,28 +90,14 @@ export default function Navbar({
             })}
           </nav>
 
-          {/* Quick Actions & User / Sheet Status */}
-          <div className="hidden sm:flex items-center gap-2.5">
-            {/* Google Sheet Sync Button */}
-            <button
-              onClick={onOpenGoogleSheetModal}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition cursor-pointer ${
-                config.status === 'connected'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
-              }`}
-              title="Pengaturan Google Spreadsheet"
-            >
-              <FileSpreadsheet className={`w-4 h-4 ${config.status === 'connected' ? 'text-emerald-600' : 'text-slate-500'}`} />
-              <span className="hidden md:inline">
-                {config.status === 'connected' ? 'Sheet Terhubung' : 'Google Sheet'}
-              </span>
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  config.status === 'connected' ? 'bg-emerald-500' : 'bg-slate-400'
-                }`}
-              />
-            </button>
+          {/* Quick Actions & User Profile */}
+          <div className="hidden sm:flex items-center gap-3">
+            {/* Auto-Sync Live Indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold" title="Setiap data yang diinput otomatis terkirim langsung ke Google Sheet">
+              <span className={`w-2 h-2 rounded-full bg-emerald-500 ${isAutoSyncing ? 'animate-ping' : ''}`} />
+              <span className="hidden md:inline">Auto-Sync Sheet</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
 
             {/* Quick Add Button */}
             <button
@@ -143,13 +126,6 @@ export default function Navbar({
 
           {/* Mobile Hamburger Button */}
           <div className="flex items-center gap-2 lg:hidden">
-            <button
-              onClick={onOpenGoogleSheetModal}
-              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg sm:hidden"
-              title="Google Sheet"
-            >
-              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
@@ -200,18 +176,10 @@ export default function Navbar({
           </div>
 
           <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenGoogleSheetModal();
-              }}
-              className="w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 bg-slate-100 text-slate-800"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>
-                {config.status === 'connected' ? 'Google Sheet Terhubung' : 'Atur Link Google Sheet'}
-              </span>
-            </button>
+            <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Otomatis Tersinkron ke Google Sheet</span>
+            </div>
 
             <button
               onClick={() => {

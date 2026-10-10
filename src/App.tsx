@@ -5,26 +5,24 @@ import SaranaView from './components/SaranaView';
 import WilayahView from './components/WilayahView';
 import MapView from './components/MapView';
 import LaporanView from './components/LaporanView';
-import GoogleSheetModal from './components/GoogleSheetModal';
 import LoginView from './components/LoginView';
 import {
   IdentitasWilayah,
   SaranaSanitasi,
-  GoogleSheetConfig,
 } from './types/sanitasi';
 import {
   getSavedWilayah,
   saveWilayah,
   getSavedSarana,
   saveSarana,
-  getSavedConfig,
-  saveConfig,
   calculateStats,
   getSavedAuth,
   saveAuth,
   fetchFromGoogleSheet,
+  autoSyncToSheet,
+  getSavedConfig,
 } from './services/googleSheets';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export default function App() {
   // Authentication State
@@ -33,17 +31,18 @@ export default function App() {
   // Active Navigation Tab
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
 
-  // Core Data (Initial clean/empty state)
+  // Core Data
   const [wilayahList, setWilayahList] = useState<IdentitasWilayah[]>(() => getSavedWilayah());
   const [saranaList, setSaranaList] = useState<SaranaSanitasi[]>(() => getSavedSarana());
-  const [sheetConfig, setSheetConfig] = useState<GoogleSheetConfig>(() => getSavedConfig());
+
+  // Auto-sync loading state for subtle UI pulse
+  const [isAutoSyncing, setIsAutoSyncing] = useState<boolean>(false);
 
   // Filter States
   const [selectedKecamatan, setSelectedKecamatan] = useState<string>('');
   const [selectedDesa, setSelectedDesa] = useState<string>('');
 
-  // Modals
-  const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
+  // Selected Detail Modal
   const [selectedSaranaDetail, setSelectedSaranaDetail] = useState<SaranaSanitasi | null>(null);
 
   // Toast Notification
@@ -65,21 +64,31 @@ export default function App() {
     saveSarana(saranaList);
   }, [saranaList]);
 
+  // Auto-pull from embedded Google Sheet URL on startup if available
   useEffect(() => {
-    saveConfig(sheetConfig);
-  }, [sheetConfig]);
-
-  // Auto-sync from embedded Google Sheet URL on startup if configured
-  useEffect(() => {
-    if (isAuthenticated && sheetConfig.sheetUrl && sheetConfig.autoSync && saranaList.length === 0) {
-      fetchFromGoogleSheet(sheetConfig.sheetUrl).then((res) => {
+    const config = getSavedConfig();
+    if (isAuthenticated && config.sheetUrl && saranaList.length === 0) {
+      fetchFromGoogleSheet(config.sheetUrl).then((res) => {
         if (res.sarana && res.sarana.length > 0) {
           setSaranaList(res.sarana);
           showToast(`Otomatis memuat ${res.sarana.length} data dari Google Spreadsheet!`);
         }
       });
     }
-  }, [isAuthenticated, sheetConfig.sheetUrl, sheetConfig.autoSync]);
+  }, [isAuthenticated]);
+
+  // Background Auto-sync dispatcher
+  const triggerAutoSync = (updatedWilayah: IdentitasWilayah[], updatedSarana: SaranaSanitasi[]) => {
+    setIsAutoSyncing(true);
+    autoSyncToSheet(updatedWilayah, updatedSarana).then((res) => {
+      setIsAutoSyncing(false);
+      if (res.success) {
+        showToast('Data tersimpan & otomatis terkirim ke Google Sheet!');
+      }
+    }).catch(() => {
+      setIsAutoSyncing(false);
+    });
+  };
 
   // Derived Dashboard Stats
   const stats = useMemo(() => {
@@ -101,50 +110,57 @@ export default function App() {
     }
   };
 
-  // Wilayah CRUD
+  // Wilayah CRUD with immediate auto-sync
   const handleAddWilayah = (data: Omit<IdentitasWilayah, 'id' | 'updatedAt'>) => {
     const newWilayah: IdentitasWilayah = {
       ...data,
       id: `wil-${Date.now()}`,
       updatedAt: new Date().toISOString().split('T')[0],
     };
-    setWilayahList((prev) => [newWilayah, ...prev]);
+    const nextList = [newWilayah, ...wilayahList];
+    setWilayahList(nextList);
     showToast(`Data wilayah ${data.desaKelurahan} berhasil ditambahkan!`);
+    triggerAutoSync(nextList, saranaList);
   };
 
   const handleUpdateWilayah = (updated: IdentitasWilayah) => {
-    setWilayahList((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+    const nextList = wilayahList.map((w) => (w.id === updated.id ? updated : w));
+    setWilayahList(nextList);
     showToast(`Data wilayah ${updated.desaKelurahan} berhasil diperbarui!`);
+    triggerAutoSync(nextList, saranaList);
   };
 
   const handleDeleteWilayah = (id: string) => {
-    setWilayahList((prev) => prev.filter((w) => w.id !== id));
+    const nextList = wilayahList.filter((w) => w.id !== id);
+    setWilayahList(nextList);
     showToast('Data wilayah berhasil dihapus.');
+    triggerAutoSync(nextList, saranaList);
   };
 
-  // Sarana CRUD
+  // Sarana CRUD with immediate auto-sync
   const handleAddSarana = (data: Omit<SaranaSanitasi, 'id'>) => {
     const newSarana: SaranaSanitasi = {
       ...data,
       id: `srn-${Date.now()}`,
     };
-    setSaranaList((prev) => [newSarana, ...prev]);
-    showToast(`Data sarana sanitasi atas nama ${data.namaPemilik} berhasil disimpan!`);
+    const nextList = [newSarana, ...saranaList];
+    setSaranaList(nextList);
+    showToast(`Data sarana ${data.namaPemilik} tersimpan & langsung dikirim ke Sheet!`);
+    triggerAutoSync(wilayahList, nextList);
   };
 
   const handleUpdateSarana = (updated: SaranaSanitasi) => {
-    setSaranaList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-    showToast(`Data sarana ${updated.namaPemilik} berhasil diperbarui!`);
+    const nextList = saranaList.map((s) => (s.id === updated.id ? updated : s));
+    setSaranaList(nextList);
+    showToast(`Data sarana ${updated.namaPemilik} diperbarui & tersinkron ke Sheet!`);
+    triggerAutoSync(wilayahList, nextList);
   };
 
   const handleDeleteSarana = (id: string) => {
-    setSaranaList((prev) => prev.filter((s) => s.id !== id));
+    const nextList = saranaList.filter((s) => s.id !== id);
+    setSaranaList(nextList);
     showToast('Data sarana berhasil dihapus.');
-  };
-
-  const handleImportSaranaFromSheet = (importedSarana: SaranaSanitasi[]) => {
-    setSaranaList(importedSarana);
-    showToast(`Berhasil menyinkronkan ${importedSarana.length} data dari Google Spreadsheet!`);
+    triggerAutoSync(wilayahList, nextList);
   };
 
   const handleOpenAddSaranaModal = () => {
@@ -173,10 +189,9 @@ export default function App() {
           setCurrentTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onOpenGoogleSheetModal={() => setIsGoogleSheetModalOpen(true)}
         onOpenAddSarana={handleOpenAddSaranaModal}
         onLogout={handleLogout}
-        config={sheetConfig}
+        isAutoSyncing={isAutoSyncing}
       />
 
       {/* Main Content Area */}
@@ -191,9 +206,9 @@ export default function App() {
             onSelectKecamatan={setSelectedKecamatan}
             onSelectDesa={setSelectedDesa}
             onOpenAddSarana={handleOpenAddSaranaModal}
-            onOpenGoogleSheetModal={() => setIsGoogleSheetModalOpen(true)}
             onNavigateToTab={(tab) => setCurrentTab(tab)}
             onSelectSaranaForDetail={(item) => setSelectedSaranaDetail(item)}
+            isAutoSyncing={isAutoSyncing}
           />
         )}
 
@@ -255,15 +270,10 @@ export default function App() {
           <div>
             <span className="font-bold text-slate-700">SIM-SANITASI CK</span> • Sistem Informasi Manajemen Data Sanitasi Bidang Cipta Karya
           </div>
-          <div className="flex items-center gap-4">
-            <span>Dinas PUPR</span>
-            <span>•</span>
-            <button
-              onClick={() => setIsGoogleSheetModalOpen(true)}
-              className="hover:text-blue-600 underline font-medium cursor-pointer"
-            >
-              Koneksi Google Spreadsheet
-            </button>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" /> Auto-Sync Google Sheet Aktif
+            </span>
             <span>•</span>
             <button
               onClick={handleLogout}
@@ -274,17 +284,6 @@ export default function App() {
           </div>
         </div>
       </footer>
-
-      {/* Google Sheet Integration Modal */}
-      <GoogleSheetModal
-        isOpen={isGoogleSheetModalOpen}
-        onClose={() => setIsGoogleSheetModalOpen(false)}
-        config={sheetConfig}
-        onSaveConfig={(cfg) => setSheetConfig(cfg)}
-        wilayahList={wilayahList}
-        saranaList={saranaList}
-        onImportSarana={handleImportSaranaFromSheet}
-      />
     </div>
   );
 }

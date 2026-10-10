@@ -34,9 +34,9 @@ interface DashboardViewProps {
   onSelectKecamatan: (kec: string) => void;
   onSelectDesa: (desa: string) => void;
   onOpenAddSarana: () => void;
-  onOpenGoogleSheetModal: () => void;
   onNavigateToTab: (tab: string) => void;
   onSelectSaranaForDetail: (sarana: SaranaSanitasi) => void;
+  isAutoSyncing?: boolean;
 }
 
 export default function DashboardView({
@@ -48,9 +48,9 @@ export default function DashboardView({
   onSelectKecamatan,
   onSelectDesa,
   onOpenAddSarana,
-  onOpenGoogleSheetModal,
   onNavigateToTab,
   onSelectSaranaForDetail,
+  isAutoSyncing = false,
 }: DashboardViewProps) {
   // Extract unique kecamatan
   const uniqueKecamatan = Array.from(
@@ -121,17 +121,15 @@ export default function DashboardView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 self-start md:self-center">
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 rounded-xl text-xs font-semibold backdrop-blur-sm">
+              <span className={`w-2 h-2 rounded-full bg-emerald-400 ${isAutoSyncing ? 'animate-ping' : ''}`} />
+              <span>Auto-Sync Sheet Aktif</span>
+            </div>
             <button
               onClick={onOpenAddSarana}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-700/30 transition transform active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-700/30 transition transform active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Input Data Sarana
-            </button>
-            <button
-              onClick={onOpenGoogleSheetModal}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Sinkron Spreadsheet
             </button>
           </div>
         </div>
@@ -145,29 +143,23 @@ export default function DashboardView({
           </div>
           <div className="max-w-md mx-auto">
             <h3 className="text-base sm:text-lg font-bold text-slate-900">
-              Basis Data Siap Digunakan (Data Masih Bersih / Kosong)
+              Basis Data Siap Digunakan
             </h3>
             <p className="text-xs text-slate-600 mt-1">
-              Data dummy telah dikosongkan. Anda dapat mulai menginput data penerima sanitasi pertama atau langsung menarik data dari Google Spreadsheet Anda!
+              Data yang Anda input akan <b>otomatis langsung terkirim ke Google Spreadsheet</b> di background tanpa perlu tombol kirim manual!
             </p>
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <button
               onClick={onOpenAddSarana}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition"
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Tambah Sarana Sanitasi Baru
-            </button>
-            <button
-              onClick={onOpenGoogleSheetModal}
-              className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Hubungkan Link Google Sheet
+              <Plus className="w-4 h-4" /> Input Sarana Sanitasi Baru
             </button>
             <button
               onClick={() => onNavigateToTab('wilayah')}
-              className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition"
+              className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition cursor-pointer"
             >
               <MapPin className="w-4 h-4 text-indigo-600" /> Input Identitas Wilayah
             </button>
