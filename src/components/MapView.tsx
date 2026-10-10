@@ -78,9 +78,35 @@ export default function MapView({
     const bounds = L.latLngBounds([]);
 
     filteredItems.forEach((sarana) => {
-      if (!sarana.latitude || !sarana.longitude) return;
+      let lat = Number(sarana.latitude);
+      let lng = Number(sarana.longitude);
+      if (isNaN(lat) || isNaN(lng) || !lat || !lng) return;
 
-      const latLng: [number, number] = [sarana.latitude, sarana.longitude];
+      // Auto-recover coordinates entered without decimal point
+      // e.g. -8569727 -> -8.569727
+      if (Math.abs(lat) > 90) {
+        const str = String(lat);
+        if (str.startsWith('-')) {
+          const digits = str.slice(1);
+          if (digits.length >= 2) lat = -parseFloat(digits[0] + '.' + digits.slice(1));
+        } else {
+          if (str.length >= 2) lat = parseFloat(str[0] + '.' + str.slice(1));
+        }
+      }
+      // e.g. 121284658 -> 121.284658
+      if (Math.abs(lng) > 180) {
+        const str = String(lng);
+        if (str.startsWith('1') && str.length >= 4) {
+          lng = parseFloat(str.slice(0, 3) + '.' + str.slice(3));
+        } else if (str.length >= 3) {
+          lng = parseFloat(str.slice(0, 2) + '.' + str.slice(2));
+        }
+      }
+
+      // Hard safety guard: skip if still out of valid world bounds
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+
+      const latLng: [number, number] = [lat, lng];
       bounds.extend(latLng);
 
       // Marker color

@@ -49,6 +49,41 @@ const JENIS_SARANA_OPTIONS: JenisSarana[] = [
   'Cubluk',
 ];
 
+// Helper to safely parse coordinate with comma (,) or dot (.) and recover missing decimals
+export function parseAndNormalizeCoordinate(val: string, isLat: boolean): number {
+  if (!val || !val.trim()) return isLat ? -8.5724 : 121.2891;
+  const clean = val.trim().replace(/,/g, '.');
+  let num = parseFloat(clean);
+  if (isNaN(num)) return isLat ? -8.5724 : 121.2891;
+
+  // Auto-normalize if user typed or pasted numbers without decimal (e.g. -8569727 -> -8.569727)
+  if (isLat && Math.abs(num) > 90) {
+    const isNeg = clean.startsWith('-');
+    const digits = clean.replace(/[^0-9]/g, '');
+    if (digits.length >= 2) {
+      const fixed = digits[0] + '.' + digits.slice(1);
+      num = isNeg ? -parseFloat(fixed) : parseFloat(fixed);
+    }
+  } else if (!isLat && Math.abs(num) > 180) {
+    const digits = clean.replace(/[^0-9]/g, '');
+    if (digits.startsWith('1') && digits.length >= 4) {
+      num = parseFloat(digits.slice(0, 3) + '.' + digits.slice(3));
+    } else if (digits.length >= 3) {
+      num = parseFloat(digits.slice(0, 2) + '.' + digits.slice(2));
+    }
+  }
+
+  if (isLat) {
+    if (num < -90) num = -90;
+    if (num > 90) num = 90;
+  } else {
+    if (num < -180) num = -180;
+    if (num > 180) num = 180;
+  }
+
+  return parseFloat(num.toFixed(6));
+}
+
 export default function SaranaView({
   saranaList,
   wilayahList,
@@ -75,6 +110,8 @@ export default function SaranaView({
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SaranaSanitasi | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [latInput, setLatInput] = useState<string>('-8.572400');
+  const [lngInput, setLngInput] = useState<string>('121.289100');
 
   // Detail Modal local state
   const [detailSarana, setDetailSarana] = useState<SaranaSanitasi | null>(selectedSaranaForModal || null);
@@ -144,6 +181,8 @@ export default function SaranaView({
 
   const handleOpenAdd = () => {
     setEditingItem(null);
+    setLatInput('-8.572400');
+    setLngInput('121.289100');
     setFormData({
       ...initialForm,
       kecamatan: filterKecamatan || wilayahList[0]?.kecamatan || 'Aesesa',
@@ -154,6 +193,8 @@ export default function SaranaView({
 
   const handleOpenEdit = (item: SaranaSanitasi) => {
     setEditingItem(item);
+    setLatInput(String(item.latitude || -8.572400));
+    setLngInput(String(item.longitude || 121.289100));
     setFormData({
       namaPemilik: item.namaPemilik,
       nik: item.nik || '',
@@ -188,10 +229,14 @@ export default function SaranaView({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setIsLocating(false);
+        const latVal = parseFloat(pos.coords.latitude.toFixed(6));
+        const lngVal = parseFloat(pos.coords.longitude.toFixed(6));
+        setLatInput(String(latVal));
+        setLngInput(String(lngVal));
         setFormData((prev) => ({
           ...prev,
-          latitude: parseFloat(pos.coords.latitude.toFixed(6)),
-          longitude: parseFloat(pos.coords.longitude.toFixed(6)),
+          latitude: latVal,
+          longitude: lngVal,
         }));
       },
       (err) => {
@@ -220,13 +265,23 @@ export default function SaranaView({
       return;
     }
 
+    // Safely parse and normalize coordinates with comma/dot support
+    const validLat = parseAndNormalizeCoordinate(latInput, true);
+    const validLng = parseAndNormalizeCoordinate(lngInput, false);
+
+    const submissionData = {
+      ...formData,
+      latitude: validLat,
+      longitude: validLng,
+    };
+
     if (editingItem) {
       onUpdateSarana({
         ...editingItem,
-        ...formData,
+        ...submissionData,
       });
     } else {
-      onAddSarana(formData);
+      onAddSarana(submissionData);
     }
     setIsFormModalOpen(false);
   };
@@ -1019,38 +1074,80 @@ export default function SaranaView({
                   />
                 </div>
 
-                {/* GPS Coordinates & High-precision capture */}
+                {/* GPS Coordinates & High-precision capture with comma/dot support */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-slate-700">Koordinat GPS (Latitude & Longitude)</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700">
+                      Koordinat GPS (Latitude & Longitude)
+                    </label>
                     <button
                       type="button"
                       onClick={handleGetLocation}
                       disabled={isLocating}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
                     >
                       <Crosshair className="w-3.5 h-3.5" />
                       {isLocating ? 'Mendeteksi Satelit...' : '📍 Ambil Koordinat GPS HP'}
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="Latitude (cth: -8.5724)"
-                      value={formData.latitude}
-                      onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) || 0 })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="Longitude (cth: 121.2891)"
-                      value={formData.longitude}
-                      onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) || 0 })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-[11px] text-slate-500 font-medium block mb-1">
+                        Latitude (Lintang) - contoh: <code className="text-blue-600">-8.569727</code> atau <code className="text-blue-600">-8,569727</code>
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Contoh: -8.569727 atau -8,569727"
+                        value={latInput}
+                        onChange={(e) => setLatInput(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] text-slate-500 font-medium block mb-1">
+                        Longitude (Bujur) - contoh: <code className="text-blue-600">121.284658</code> atau <code className="text-blue-600">121,284658</code>
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Contoh: 121.284658 atau 121,284658"
+                        value={lngInput}
+                        onChange={(e) => setLngInput(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      />
+                    </div>
                   </div>
+
+                  {/* Feedback preview & auto-format button */}
+                  <div className="mt-2 p-2 bg-emerald-50/80 border border-emerald-200 rounded-lg flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="text-slate-700">
+                        Hasil Koordinat Terbaca: Lat <b className="font-mono text-emerald-800">{parseAndNormalizeCoordinate(latInput, true)}</b>, Long <b className="font-mono text-emerald-800">{parseAndNormalizeCoordinate(lngInput, false)}</b>
+                      </span>
+                    </div>
+
+                    {/* Auto-fix helper button if user typed integer without dot or comma */}
+                    {((latInput.includes('-8') && !latInput.includes('.') && !latInput.includes(',') && latInput.length > 3) ||
+                      (lngInput.includes('121') && !lngInput.includes('.') && !lngInput.includes(',') && lngInput.length > 4)) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLatInput(String(parseAndNormalizeCoordinate(latInput, true)));
+                          setLngInput(String(parseAndNormalizeCoordinate(lngInput, false)));
+                        }}
+                        className="px-2 py-0.5 bg-blue-600 text-white rounded font-bold text-[10px] hover:bg-blue-700 transition cursor-pointer"
+                      >
+                        ⚡ Pasang Koma/Titik Otomatis
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Bisa menggunakan tanda koma (<b>,</b>) atau titik (<b>.</b>). Nilai akan otomatis disesuaikan agar peta tidak hang.
+                  </p>
                 </div>
               </div>
 

@@ -226,8 +226,26 @@ export async function fetchFromGoogleSheet(sheetUrl: string): Promise<{
       const kondisiRaw = getVal(['kondisi', 'kondisi sarana']);
       const septicRaw = getVal(['septic tank', 'memiliki septic tank', 'ada septic tank']);
 
-      const lat = parseFloat(getVal(['lat', 'latitude', 'lintang']) || '-8.5724');
-      const lng = parseFloat(getVal(['lng', 'long', 'longitude', 'bujur']) || '121.2891');
+      const latRaw = getVal(['lat', 'latitude', 'lintang']).replace(/,/g, '.');
+      const lngRaw = getVal(['lng', 'long', 'longitude', 'bujur']).replace(/,/g, '.');
+      let lat = parseFloat(latRaw || '-8.5724');
+      let lng = parseFloat(lngRaw || '121.2891');
+
+      // Recover coordinates missing decimal points
+      if (Math.abs(lat) > 90) {
+        const digits = latRaw.replace(/[^0-9]/g, '');
+        if (digits.length >= 2) {
+          lat = latRaw.startsWith('-') ? -parseFloat(digits[0] + '.' + digits.slice(1)) : parseFloat(digits[0] + '.' + digits.slice(1));
+        }
+      }
+      if (Math.abs(lng) > 180) {
+        const digits = lngRaw.replace(/[^0-9]/g, '');
+        if (digits.startsWith('1') && digits.length >= 4) {
+          lng = parseFloat(digits.slice(0, 3) + '.' + digits.slice(3));
+        } else if (digits.length >= 3) {
+          lng = parseFloat(digits.slice(0, 2) + '.' + digits.slice(2));
+        }
+      }
 
       parsedSarana.push({
         id: `gsheet-srn-${idx + 1}`,
